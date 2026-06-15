@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en" class="i18n-pending">
+<head>
+<meta charset="UTF-8"/>
+<title>DragonCore Command</title>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<style>html.i18n-pending body{visibility:hidden}</style>
+<script>
+(function(){
+  try{
+    var saved=localStorage.getItem("PANEL_LANG");
+    var langs=(navigator.languages&&navigator.languages.length?navigator.languages:[navigator.language||""]).join(" ").toLowerCase();
+    var lang=saved || (langs.indexOf("pt")!==-1 ? "pt-BR" : "en-US");
+    document.documentElement.lang=lang.toLowerCase();
+  }catch(e){}
+  setTimeout(function(){document.documentElement.classList.remove("i18n-pending");},2500);
+})();
+</script>
+<link rel="stylesheet" href="assets/app.css?v=20260511visualsafesave1"/>
+</head>
+<body>
+<div class="app">
+<div class="shell">
+
+<!-- Login overlay -->
+<div class="overlay" id="loginOverlay">
+  <div class="overlay-inner">
+    <div class="ov-title">DragonCore Command</div>
+    <div class="ov-sub">Access the private control node with admin or reseller credentials.</div>
+    <input id="loginUser" class="ov-field" placeholder="Username" autocomplete="username"/>
+    <input id="loginPass" class="ov-field" type="password" placeholder="Password" autocomplete="current-password"/>
+    <button class="btn" id="loginBtn" style="width:100%;margin-top:6px;justify-content:center;">Sign in</button>
+    <div id="loginErr" style="margin-top:6px;font-size:.72rem;color:var(--danger);"></div>
+  </div>
+</div>
+
+<!-- Main app -->
+<div id="mainApp" class="hidden">
+  <div class="panel-layout">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-block">
+        <div class="brand-mark">DC</div>
+        <div class="brand-copy">
+          <strong>DragonCore</strong>
+          <span>Command Node</span>
+        </div>
+      </div>
+      <nav id="mainNav" class="side-nav">
+        <button class="tab-btn active" data-tab="dashboard"><span class="nav-icon">⌂</span><span>Painel</span></button>
+        <div class="nav-group-label">Contas</div>
+        <button class="tab-btn" data-tab="ssh"><span class="nav-icon">👥</span><span>SSH / SlowDNS</span></button>
+        <button class="tab-btn" data-tab="xray"><span class="nav-icon">◇</span><span>Xray Users</span></button>
+        <div class="nav-group-label superadmin-only hidden">Administração</div>
+        <button class="tab-btn superadmin-only hidden" data-tab="resellers"><span class="nav-icon">🏪</span><span>Revendedores</span></button>
+        <button class="tab-btn superadmin-only hidden" data-tab="servers"><span class="nav-icon">▣</span><span>Servidores</span></button>
+        <button class="tab-btn superadmin-only hidden" data-tab="servers-status"><span class="nav-icon">▥</span><span>Status Servidores</span></button>
+        <button class="tab-btn superadmin-only hidden" data-tab="stats"><span class="nav-icon">📊</span><span>Servidor</span></button>
+        <button class="tab-btn superadmin-only hidden" data-tab="vnstat"><span class="nav-icon">⇅</span><span>Tráfego</span></button>
+        <button class="tab-btn superadmin-only hidden" data-tab="logs"><span class="nav-icon">☰</span><span>Logs</span></button>
+        <button class="tab-btn superadmin-only hidden" data-tab="server"><span class="nav-icon">⚙</span><span>Configurações</span></button>
+      </nav>
+    </aside>
+    <div class="drawer-backdrop" id="drawerBackdrop"></div>
+    <section class="workspace">
+      <header class="topbar">
+        <div class="topbar-left">
+          <button class="icon-btn" id="menuToggle" type="button" aria-label="Open menu">☰</button>
+          <div class="topbar-title">
+            <span id="pageEyebrow">Painel</span>
+            <strong id="pageTitle">Visão geral</strong>
+          </div>
+        </div>
+        <div class="topbar-actions">
+          <select id="languageSelect" class="language-select" title="Language" aria-label="Language">
+            <option value="pt-BR">PT-BR</option>
+            <option value="en-US">EN-US</option>
+          </select>
+          <div class="user-pill">
+            <span id="roleChip"></span>
+            <strong id="meUsername"></strong>
+          </div>
+          <button class="btn btn-ghost btn-sm" id="logoutBtn">Sair</button>
+        </div>
+      </header>
+      <main class="workspace-main">
+
+  <!-- ═══════════ Dashboard Tab ═══════════ -->
+  <div class="tab-pane active" id="tab-dashboard">
+    <div class="dash-grid">
+      <div class="dash-card accent-blue">
+        <div class="dash-card-main">
+          <span class="dash-label">Total de contas</span>
+          <strong id="dashTotalUsers">--</strong>
+          <small><span id="dashActiveUsers">--</span> ativas · <span id="dashExpiredUsers">--</span> expiradas</small>
+          <small id="dashAccountBreakdown">SSH -- · Xray --</small>
+        </div>
+        <div class="dash-icon">👥</div>
+      </div>
+      <div class="dash-card accent-green superadmin-only hidden">
+        <div class="dash-card-main">
+          <span class="dash-label">Servidores</span>
+          <strong id="dashServers">--</strong>
+          <small id="dashServerStatus">monitoramento em tempo real</small>
+        </div>
+        <div class="dash-icon">▣</div>
+      </div>
+      <div class="dash-card accent-green reseller-only hidden" id="dashQuotaSummaryCard">
+        <div class="dash-card-main">
+          <span class="dash-label">Limite disponível</span>
+          <strong id="dashQuotaRemaining">--</strong>
+          <small id="dashQuotaSummaryText">Carregando cota…</small>
+          <div class="mini-meter"><span id="dashQuotaMiniBar"></span></div>
+        </div>
+        <div class="dash-icon">✓</div>
+      </div>
+      <div class="dash-card accent-purple">
+        <div class="dash-card-main">
+          <span class="dash-label">Conexões ativas</span>
+          <strong id="dashConnections">--</strong>
+          <small id="dashConnectionsText">SSH + Xray online agora</small>
+        </div>
+        <div class="dash-icon">⌁</div>
+      </div>
+      <div class="dash-card accent-orange">
+        <div class="dash-card-main">
+          <span class="dash-label">Xray clients</span>
+          <strong id="dashXrayClients">--</strong>
+          <small id="dashXrayStatus">Pronto para revendedores</small>
+        </div>
+        <div class="dash-icon">◇</div>
+      </div>
+      <div class="dash-card dash-resource accent-blue superadmin-only hidden">
+        <div class="dash-card-main">
+          <span class="dash-label">CPU</span>
+          <strong id="dashCpuVal">--%</strong>
+          <small id="dashCpuText">Carga do processador</small>
+          <div class="mini-meter dashboard-meter"><span id="dashCpuBar"></span></div>
+        </div>
+        <div class="dash-icon">◴</div>
+      </div>
+      <div class="dash-card dash-resource accent-green superadmin-only hidden">
+        <div class="dash-card-main">
+          <span class="dash-label">RAM</span>
+          <strong id="dashRamVal">--%</strong>
+          <small id="dashRamText">Memória usada</small>
+          <div class="mini-meter dashboard-meter"><span id="dashRamBar"></span></div>
+        </div>
+        <div class="dash-icon">▣</div>
+      </div>
+      <div class="dash-card dash-resource accent-purple superadmin-only hidden">
+        <div class="dash-card-main">
+          <span class="dash-label">Rede</span>
+          <strong id="dashNetVal">--</strong>
+          <small id="dashNetText">RX -- · TX -- Mb/s</small>
+          <small id="dashNetTotal">Total --</small>
+        </div>
+        <div class="dash-icon">⇅</div>
+      </div>
+    </div>
+
+    <div class="grid2 dashboard-lower">
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Ações rápidas</div>
+          <span class="chip green">simples</span>
+        </div>
+        <div class="quick-actions">
+          <button class="quick-action" type="button" data-jump="ssh"><strong>Criar SSH</strong><span>Usuário, senha, validade e limite.</span></button>
+          <button class="quick-action" type="button" data-jump="xray"><strong>Criar Xray</strong><span>UUID, label, validade e conexões.</span></button>
+          <button class="quick-action superadmin-only hidden" type="button" data-jump="resellers"><strong>Novo revendedor</strong><span>Plano, validade e limite de contas.</span></button>
+          <button class="quick-action superadmin-only hidden" type="button" data-jump="server"><strong>Configurar serviços</strong><span>Portas, DNSTT, UDPGW e TLS.</span></button>
+        </div>
+      </div>
+      <div class="card" id="dashboardQuotaCard">
+        <div class="card-hdr"><div class="card-title">Minha cota</div><span class="chip" id="dashQuotaChip">--</span></div>
+        <div class="quota-meter"><span id="dashQuotaBar"></span></div>
+        <div class="statusbar"><span id="dashQuotaText">Carregando…</span><span id="dashQuotaBreakdown"></span></div>
+      </div>
+    </div>
+  </div><!-- /tab-dashboard -->
+
+<!-- ═══════════ SSH Users Tab ═══════════ -->
+  <div class="tab-pane" id="tab-ssh">
+
+    <!-- Reseller info card (visible to resellers only) -->
+    <div id="resellerInfoCard" class="card hidden" style="margin-bottom:12px;">
+      <div class="card-hdr"><div class="card-title">My Account</div></div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="m-label">Users (used / max)</div>
+          <div class="m-val" id="rUsedMax">-- / --</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">Expires</div>
+          <div class="m-val" id="rExpiry">--</div>
+        </div>
+        <div class="metric">
+          <div class="m-label">Status</div>
+          <div class="m-val" id="rStatus">--</div>
+        </div>
+      </div>
+    </div>
+
+    <div id="sshServerPickerCard" class="card hidden" style="margin-bottom:12px;">
+      <div class="card-hdr">
+        <div class="card-title">Target server</div>
+        <span class="chip">master/slave</span>
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr auto;align-items:end;">
+        <div class="field"><label>Create/list SSH users on</label><select id="sshServerSelect"></select></div>
+        <button class="btn btn-ghost btn-sm" type="button" id="reloadServersBtn">Reload servers</button>
+      </div>
+      <div class="hint" id="sshServerHint">Servers with SSH enabled are available here.</div>
+    </div>
+
+    <div class="grid2">
+      <!-- Users list -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Users <span class="chip" id="userCountChip">0</span></div>
+          <div style="display:flex;gap:5px;">
+            <button class="btn btn-ghost btn-sm" id="newUserBtn">+ New</button>
+            <button class="btn btn-ghost btn-sm" id="reloadUsersBtn">Reload</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>User</th><th>Status</th><th>Auth</th>
+              <th>Conn</th><th>Max</th><th>Up</th><th>Dn</th><th>Expires</th>
+              <th id="ownerColHead" class="superadmin-only hidden">Owner</th>
+              <th>Actions</th>
+            </tr></thead>
+            <tbody id="usersBody"></tbody>
+          </table>
+        </div>
+        <div class="statusbar"><span id="userStatus">Ready.</span><span id="lastReload"></span></div>
+      </div>
+
+      <!-- Create / edit user form -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Create / update user</div>
+          <button class="btn btn-ghost btn-sm" id="toggleFormBtn">Show form</button>
+        </div>
+        <div id="userFormWrap" class="collapsible collapsed">
+          <form id="userForm">
+            <div class="form-grid">
+              <div class="field"><label>Username</label><input id="fUsername" required autocomplete="off"/></div>
+              <div class="field"><label>Password <span class="hint">(blank = keep)</span></label><input id="fPassword" type="password" autocomplete="new-password"/></div>
+              <div class="field"><label>TOTP Secret</label>
+                <div class="field-row">
+                  <input id="fTotpSecret" placeholder="Leave blank to disable"/>
+                  <button class="btn btn-ghost btn-sm" type="button" id="genTotpBtn">Gen</button>
+                  <button class="btn btn-ghost btn-sm" type="button" id="clearTotpBtn">X</button>
+                </div>
+              </div>
+              <div class="field"><label>TOTP Period (s)</label><input id="fTotpPeriod" type="number" min="15" step="15" placeholder="60"/></div>
+              <div class="field"><label>TOTP Window</label><input id="fTotpWindow" type="number" min="0" placeholder="1"/></div>
+              <div class="field"><label>TOTP Digits</label><input id="fTotpDigits" type="number" min="6" max="8" placeholder="6"/></div>
+              <div class="field"><label>Allow static password too</label><input id="fAllowStatic" type="checkbox" style="width:16px;height:16px;margin-top:10px;"/></div>
+              <div class="field"><label>Max connections</label><input id="fMaxConn" type="number" min="0" placeholder="0 = unlimited"/></div>
+              <div class="field"><label>Expires at</label><input id="fExpires" type="datetime-local"/></div>
+              <div class="field"><label>Max Upload (Mb/s)</label><input id="fUp" type="number" min="0" placeholder="0 = default"/></div>
+              <div class="field"><label>Max Download (Mb/s)</label><input id="fDown" type="number" min="0" placeholder="0 = default"/></div>
+            </div>
+            <div class="form-actions">
+              <button class="btn" type="submit" id="saveUserBtn">Save user</button>
+              <button class="btn btn-ghost" type="button" id="cancelUserBtn">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-ssh -->
+
+  <!-- ═══════════ Xray Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-xray">
+    <!-- Edit Client Panel (hidden by default) -->
+    <div id="editXrayClientPanel" class="card hidden" style="margin-bottom:12px;border-color:rgba(245,158,11,.4);">
+      <div class="card-hdr">
+        <div class="card-title">Edit Client <span id="editClientUUID" style="font-family:monospace;font-size:.65rem;color:var(--muted);"></span></div>
+        <button class="btn btn-ghost btn-sm" onclick="closeEditXrayClient()">Cancel</button>
+      </div>
+      <div class="form-grid">
+        <div class="field"><label>Display Name</label><input id="editXrayName" autocomplete="off"/></div>
+        <div class="field"><label>Email / Label</label><input id="editXrayEmail" autocomplete="off"/></div>
+        <div class="field"><label>Expiry Date</label><input type="datetime-local" id="editXrayExpiry" style="color-scheme:dark;"/></div>
+        <div class="field"><label>Max Connections <span class="hint">(0 = unlimited)</span></label><input type="number" min="0" id="editXrayMaxConns"/></div>
+      </div>
+      <div class="form-actions" style="margin-top:8px;">
+        <button class="btn btn-sm" onclick="saveEditXrayClient()">Save Changes</button>
+        <button class="btn btn-ghost btn-sm" onclick="closeEditXrayClient()">Cancel</button>
+      </div>
+      <div id="editXrayClientStatus" class="hint" style="margin-top:4px;"></div>
+    </div>
+    <div class="card reseller-only hidden reseller-helper-card">
+      <div class="card-hdr"><div class="card-title">Área do revendedor</div><span class="chip green">cota única</span></div>
+      <p class="hint">Crie clientes Xray com a mesma experiência do painel principal. Cada cliente Xray desconta do mesmo limite usado pelas contas SSH.</p>
+      <div class="mini-summary">
+        <span><strong id="xrayResellerQuotaUsed">--</strong><small>usadas</small></span>
+        <span><strong id="xrayResellerQuotaRemaining">--</strong><small>disponíveis</small></span>
+        <span><strong id="xrayResellerQuotaMix">SSH -- · Xray --</strong><small>divisão</small></span>
+      </div>
+    </div>
+
+    <div id="xrayServerPickerCard" class="card hidden" style="margin-bottom:12px;">
+      <div class="card-hdr">
+        <div class="card-title">Target server</div>
+        <span class="chip">master/slave</span>
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr auto;align-items:end;">
+        <div class="field"><label>Manage Xray users and config on</label><select id="xrayServerSelect"></select></div>
+        <button class="btn btn-ghost btn-sm" type="button" id="reloadServersBtn2">Reload servers</button>
+      </div>
+      <div class="hint hidden" id="xrayServerHint"></div>
+    </div>
+
+    <!-- Status -->
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">Xray Core <span class="chip" id="xrayChip">--</span></div>
+        <div class="card-actions xray-admin-only">
+          <button class="btn btn-ghost btn-sm" id="xStartBtn">Start</button>
+          <button class="btn btn-danger btn-sm" id="xStopBtn">Stop</button>
+          <button class="btn btn-ghost btn-sm" id="xRestartBtn">Restart</button>
+          <button class="btn btn-ghost btn-sm" id="xRepairStatsBtn">Repair counters</button>
+          <button class="btn btn-ghost btn-sm" id="xRefreshBtn">Refresh</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="m-label">Status</div><div class="m-val" id="xRunning">--</div></div>
+        <div class="metric"><div class="m-label">Online</div><div class="m-val" id="xOnlineUsers">--</div></div>
+        <div class="metric"><div class="m-label">PID</div><div class="m-val" id="xPID">--</div></div>
+        <div class="metric"><div class="m-label">Uptime</div><div class="m-val" id="xUptime">--</div></div>
+        <div class="metric"><div class="m-label">Counters API</div><div class="m-val" id="xStatsConfig">--</div></div>
+      </div>
+      <div class="statusbar"><span id="xStatus">Ready.</span></div>
+    </div>
+
+    <!-- Inbounds & clients -->
+    <div class="card" style="margin-top:12px;">
+      <div class="card-hdr">
+        <div class="card-title">Inbounds &amp; Clients</div>
+        <div class="card-actions"><button class="btn btn-ghost btn-sm" id="xLoadInboundsBtn">Reload</button></div>
+      </div>
+      <div id="inboundsContainer">
+        <div class="hint" style="padding:8px 0;">Loading inbounds…</div>
+      </div>
+    </div>
+
+    <!-- Config editor -->
+    <div class="card xray-admin-only" style="margin-top:12px;">
+      <div class="card-hdr">
+        <div class="card-title">Xray Config</div>
+        <div class="card-actions">
+          <button class="btn btn-sm" id="xrayWizardTabBtn" onclick="setXrayCfgMode('wizard')">Visual</button>
+          <button class="btn btn-ghost btn-sm" id="xrayJsonTabBtn" onclick="setXrayCfgMode('json')">JSON</button>
+        </div>
+      </div>
+      <!-- Wizard pane -->
+      <div id="xrayWizardPane">
+        <div class="form-grid" style="margin-bottom:8px;">
+          <div class="field">
+            <label>Log Level</label>
+            <select id="wzLogLevel">
+              <option value="none">none</option>
+              <option value="error">error</option>
+              <option value="warning" selected>warning</option>
+              <option value="info">info</option>
+              <option value="debug">debug</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+          <span style="font-size:.8rem;font-weight:600;">Inbounds</span>
+          <button class="btn btn-ghost btn-sm" type="button" onclick="wzToggleAddInbound()">+ Add</button>
+        </div>
+        <div id="wzInboundsList" style="margin-bottom:8px;"></div>
+        <!-- Add inbound form -->
+        <div id="wzAddInboundForm" class="hidden" style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-bottom:8px;">
+          <div class="form-grid">
+            <div class="field">
+              <label>Protocol</label>
+              <select id="wzProtocol" onchange="onWzProtoChange(this.value)">
+                <option value="vless">VLESS</option>
+                <option value="vmess">VMess</option>
+                <option value="trojan">Trojan</option>
+                <option value="shadowsocks">Shadowsocks</option>
+                <option value="socks">SOCKS5 (local)</option>
+              </select>
+            </div>
+            <div class="field"><label>Port</label><input type="number" id="wzPort" min="1" max="65535" placeholder="10086"/></div>
+            <div class="field"><label>Listen IP</label><input type="text" id="wzListenIP" placeholder="0.0.0.0"/></div>
+            <div class="field"><label>Tag</label><input type="text" id="wzTag" placeholder="vless-in"/></div>
+            <!-- VLESS / VMess transport fields -->
+            <div id="wzVlessFields" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="field">
+                <label>Network</label>
+                <select id="wzNetwork" onchange="onWzNetworkChange(this.value)">
+                  <option value="tcp">TCP</option>
+                  <option value="ws">WebSocket</option>
+                  <option value="xhttp">XHTTP (SplitHTTP)</option>
+                  <option value="httpupgrade">HTTPUpgrade</option>
+                  <option value="h2">HTTP/2</option>
+                  <option value="grpc">gRPC</option>
+                </select>
+              </div>
+              <!-- TCP: no extra fields -->
+              <!-- WebSocket -->
+              <div class="field" id="wzWSPathField" style="display:none;"><label>Path</label><input type="text" id="wzWSPath" placeholder="/ws"/></div>
+              <!-- XHTTP -->
+              <div class="field" id="wzXHTTPPathField" style="display:none;"><label>Path</label><input type="text" id="wzXHTTPPath" placeholder="/xhttp"/></div>
+              <div class="field" id="wzXHTTPHostField" style="display:none;"><label>Host <span class="hint">(SNI)</span></label><input type="text" id="wzXHTTPHost" placeholder="example.com"/></div>
+              <div class="field" id="wzXHTTPModeField" style="display:none;">
+                <label>Mode</label>
+                <select id="wzXHTTPMode">
+                  <option value="auto">auto</option>
+                  <option value="packet-up">packet-up</option>
+                  <option value="stream-up">stream-up</option>
+                  <option value="stream-down">stream-down</option>
+                  <option value="stream-one">stream-one</option>
+                </select>
+              </div>
+              <!-- HTTPUpgrade -->
+              <div class="field" id="wzHUPathField" style="display:none;"><label>Path</label><input type="text" id="wzHUPath" placeholder="/upgrade"/></div>
+              <div class="field" id="wzHUHostField" style="display:none;"><label>Host <span class="hint">(SNI)</span></label><input type="text" id="wzHUHost" placeholder="example.com"/></div>
+              <!-- H2 -->
+              <div class="field" id="wzH2PathField" style="display:none;"><label>Path</label><input type="text" id="wzH2Path" placeholder="/h2"/></div>
+              <div class="field" id="wzH2HostField" style="display:none;"><label>Host</label><input type="text" id="wzH2Host" placeholder="example.com"/></div>
+              <!-- gRPC -->
+              <div class="field" id="wzGRPCServiceField" style="display:none;"><label>Service Name</label><input type="text" id="wzGRPCService" placeholder="grpc-service"/></div>
+              <div class="field" id="wzGRPCMultiField" style="display:none;">
+                <label style="display:flex;align-items:center;gap:5px;margin-top:20px;">
+                  <input type="checkbox" id="wzGRPCMulti"/> Multi-mode
+                </label>
+              </div>
+              <!-- TLS (all transports) -->
+              <div class="field" style="grid-column:1/-1;">
+                <label>TLS</label>
+                <select id="wzTLS" onchange="onWzTLSChange(this.value)">
+                  <option value="none">None</option>
+                  <option value="tls">TLS</option>
+                  <option value="reality">Reality</option>
+                </select>
+              </div>
+              <!-- TLS cert/key picker — shown when wzTLS=tls -->
+              <div id="wzTLSCertBlock" style="display:none;grid-column:1/-1;padding:8px;background:var(--card-bg);border:1px solid var(--border);border-radius:6px;">
+                <input type="hidden" id="wzTLSCert"/>
+                <input type="hidden" id="wzTLSKey"/>
+                <div style="margin-bottom:6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                  <span style="font-size:.73rem;color:var(--muted);">Certificate source:</span>
+                  <button class="btn btn-sm" id="wzCertSrcFileBtn" type="button" onclick="setWzCertSrc('file')">File Path</button>
+                  <button class="btn btn-ghost btn-sm" id="wzCertSrcPasteBtn" type="button" onclick="setWzCertSrc('paste')">Paste PEM</button>
+                  <button class="btn btn-ghost btn-sm" id="wzCertSrcGenBtn" type="button" onclick="setWzCertSrc('gen')">Self-Signed</button>
+                </div>
+                <!-- File Path sub-panel -->
+                <div id="wzCertSrcFile" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div class="field" style="margin:0;"><label style="font-size:.72rem;">Cert File Path</label><input type="text" id="wzTLSCertPath" placeholder="/opt/sshpanel/certs/…/cert.pem" oninput="document.getElementById('wzTLSCert').value=this.value"/></div>
+                  <div class="field" style="margin:0;"><label style="font-size:.72rem;">Key File Path</label><input type="text" id="wzTLSKeyPath" placeholder="/opt/sshpanel/certs/…/key.pem" oninput="document.getElementById('wzTLSKey').value=this.value"/></div>
+                </div>
+                <!-- Paste PEM sub-panel -->
+                <div id="wzCertSrcPaste" style="display:none;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div class="field" style="margin:0;"><label style="font-size:.72rem;">Certificate PEM</label><textarea id="wzPastedCert" rows="5" placeholder="-----BEGIN CERTIFICATE-----&#10;…" style="font-family:monospace;font-size:.7rem;width:100%;box-sizing:border-box;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:inherit;padding:4px;"></textarea></div>
+                    <div class="field" style="margin:0;"><label style="font-size:.72rem;">Private Key PEM</label><textarea id="wzPastedKey" rows="5" placeholder="-----BEGIN EC PRIVATE KEY-----&#10;…" style="font-family:monospace;font-size:.7rem;width:100%;box-sizing:border-box;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:inherit;padding:4px;"></textarea></div>
+                  </div>
+                  <div style="display:flex;gap:8px;align-items:flex-end;margin-top:6px;flex-wrap:wrap;">
+                    <div class="field" style="flex:1;min-width:120px;margin:0;"><label style="font-size:.72rem;">Name <span class="hint">(storage folder)</span></label><input type="text" id="wzPastedName" placeholder="my-cert"/></div>
+                    <button class="btn btn-sm" type="button" onclick="wzSavePastedCert()">Save PEM</button>
+                    <span id="wzPasteCertStatus" class="hint"></span>
+                  </div>
+                </div>
+                <!-- Self-Signed sub-panel -->
+                <div id="wzCertSrcGen" style="display:none;">
+                  <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
+                    <div class="field" style="flex:1;min-width:140px;margin:0;"><label style="font-size:.72rem;">Domain <span class="hint">(CN)</span></label><input type="text" id="wzGenDomain" placeholder="example.com"/></div>
+                    <button class="btn btn-sm" type="button" onclick="wzGenerateCert()">Generate</button>
+                    <span id="wzGenCertStatus" class="hint"></span>
+                  </div>
+                </div>
+              </div>
+              <!-- Reality extra fields -->
+              <div class="field" id="wzRealityDestField" style="display:none;"><label>Dest <span class="hint">(e.g. example.com:443)</span></label><input type="text" id="wzRealityDest" placeholder="example.com:443"/></div>
+              <div class="field" id="wzRealitySNIField" style="display:none;"><label>Server Name</label><input type="text" id="wzRealitySNI" placeholder="example.com"/></div>
+              <div class="field" id="wzRealityPrivField" style="display:none;"><label>Private Key</label><input type="text" id="wzRealityPriv" placeholder="reality private key"/></div>
+              <div class="field" id="wzRealityShortIDField" style="display:none;"><label>Short ID</label><input type="text" id="wzRealityShortID" placeholder="short id (hex)"/></div>
+            </div>
+            <!-- Trojan fields -->
+            <div id="wzTrojanFields" class="hidden" style="grid-column:1/-1;">
+              <div class="field"><label>Password</label><input type="text" id="wzTrojanPass" placeholder="trojan-password"/></div>
+            </div>
+            <!-- Shadowsocks fields -->
+            <div id="wzSSFields" class="hidden" style="grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:8px;">
+              <div class="field"><label>Password</label><input type="text" id="wzSSPass" placeholder="password"/></div>
+              <div class="field"><label>Method</label>
+                <select id="wzSSMethod">
+                  <option value="chacha20-ietf-poly1305">chacha20-ietf-poly1305</option>
+                  <option value="aes-256-gcm">aes-256-gcm</option>
+                  <option value="aes-128-gcm">aes-128-gcm</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:8px;">
+            <button class="btn btn-sm" type="button" onclick="wzSaveInbound()">Add Inbound</button>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="document.getElementById('wzAddInboundForm').classList.add('hidden')">Cancel</button>
+          </div>
+        </div>
+        <div class="form-actions" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+          <button class="btn btn-sm" type="button" onclick="applyWizardConfig()">Save Config</button>
+          <span class="hint" id="wzStatus" style="margin-left:8px;"></span>
+        </div>
+      </div>
+      <!-- JSON pane (hidden by default) -->
+      <div id="xrayCfgPaneJson" class="hidden">
+        <textarea id="xCfgEditor" class="code-area" rows="14" placeholder="Xray JSON config…"></textarea>
+        <div class="statusbar"><span id="xCfgStatus">Ready.</span></div>
+        <div class="form-actions" style="margin-top:8px;">
+          <button class="btn btn-ghost btn-sm" id="xLoadCfgBtn">Load JSON</button>
+          <button class="btn btn-sm" id="xSaveCfgBtn">Save &amp; Restart</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="card xray-admin-only" style="margin-top:12px;">
+      <div class="card-hdr">
+        <div class="card-title">Logs <span class="chip">last 200 lines</span></div>
+        <div class="card-actions"><button class="btn btn-ghost btn-sm" id="xLoadLogsBtn">Refresh</button></div>
+      </div>
+      <pre class="log-box" id="xLogsBox"></pre>
+    </div>
+  </div><!-- /tab-xray -->
+
+  <!-- ═══════════ Resellers Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-resellers">
+    <div class="grid2">
+      <!-- Resellers list -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Resellers <span class="chip" id="resellerCountChip">0</span></div>
+          <div style="display:flex;gap:5px;">
+            <button class="btn btn-ghost btn-sm" id="newResellerBtn">+ New</button>
+            <button class="btn btn-ghost btn-sm" id="reloadResellersBtn">Reload</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Username</th><th>Users (used/max)</th><th>Expires</th><th>Status</th><th>Actions</th>
+            </tr></thead>
+            <tbody id="resellersBody"></tbody>
+          </table>
+        </div>
+        <div class="statusbar"><span id="resellerStatus">Ready.</span></div>
+      </div>
+
+      <!-- Create / edit reseller form -->
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title" id="resellerFormTitle">Create Reseller</div>
+          <button class="btn btn-ghost btn-sm" id="cancelResellerBtn">Cancel</button>
+        </div>
+        <form id="resellerForm">
+          <div class="form-grid">
+            <div class="field"><label>Username</label><input id="rUsername" required autocomplete="off"/></div>
+            <div class="field"><label>Password <span class="hint">(blank = keep)</span></label><input id="rPassword" type="password" autocomplete="new-password"/></div>
+            <div class="field"><label>Max SSH users (0 = unlimited)</label><input id="rMaxUsers" type="number" min="0" placeholder="30"/></div>
+            <div class="field"><label>Expires at</label><input id="rExpires" type="datetime-local"/></div>
+            <div class="field"><label>Active</label><input id="rActive" type="checkbox" checked style="width:16px;height:16px;margin-top:10px;"/></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn" type="submit" id="saveResellerBtn">Save reseller</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div><!-- /tab-resellers -->
+
+  <!-- ═══════════ Servers Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-servers">
+    <div id="serversListView">
+      <div class="grid2 servers-grid">
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">Managed servers <span class="chip" id="serversCountChip">0</span></div>
+            <div class="card-actions"><button class="btn btn-ghost btn-sm" id="refreshServersBtn" type="button">Reload</button></div>
+          </div>
+          <div class="tbl-wrap">
+            <table>
+              <thead><tr><th>Name</th><th>URL</th><th>Options</th><th>Status</th><th>Actions</th></tr></thead>
+              <tbody id="serversBody"></tbody>
+            </table>
+          </div>
+          <div class="statusbar"><span id="serversStatus">Add slave nodes so the master can create SSH/Xray users remotely.</span></div>
+        </div>
+
+        <div class="card">
+          <div class="card-hdr"><div class="card-title" id="serverFormTitle">Add / edit server</div></div>
+          <form id="serverForm">
+            <input type="hidden" id="srvID"/>
+            <div class="form-grid server-form-grid">
+              <div class="field"><label>Name</label><input id="srvName" placeholder="Brazil Node 01"/></div>
+              <div class="field"><label>Base URL</label><input id="srvBaseURL" placeholder="https://node.example.com:8080"/></div>
+              <div class="field"><label>Admin username</label><input id="srvAdminUser" placeholder="admin"/></div>
+              <div class="field"><label>Admin key / password</label><input id="srvAdminKey" type="password" placeholder="leave blank to keep saved key"/></div>
+              <label class="toggle-field"><input type="checkbox" id="srvEnableSSH" checked/> SSH enabled</label>
+              <label class="toggle-field"><input type="checkbox" id="srvEnableXray" checked/> Xray enabled</label>
+              <label class="toggle-field"><input type="checkbox" id="srvIsActive" checked/> Active</label>
+            </div>
+            <div class="form-actions" style="margin-top:8px;">
+              <button class="btn" type="submit" id="saveServerBtn">Save server</button>
+              <button class="btn btn-ghost" type="button" id="testServerBtn">Test</button>
+              <button class="btn btn-ghost" type="button" id="clearServerFormBtn">New</button>
+            </div>
+            <div id="serverFormStatus" class="hint" style="margin-top:6px;"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div id="serverConfigSubpage" class="hidden">
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-hdr">
+          <div class="card-title">Configure server <span class="chip" id="cfgServerName">--</span></div>
+          <div class="card-actions">
+            <button class="btn btn-ghost btn-sm" id="backToServersBtn" type="button">Back</button>
+            <button class="btn btn-ghost btn-sm" id="loadManagedConfigBtn" type="button">Reload config</button>
+            <button class="btn btn-sm" id="saveManagedConfigBtn" type="button">Save config</button>
+          </div>
+        </div>
+        <div class="statusbar"><span id="managedConfigStatus">Select Configure on a server to edit that node config.</span><span class="hint">This visual editor writes the same config.json on the selected node.</span></div>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="card">
+            <div class="card-hdr"><div class="card-title">Network</div><span class="chip green">live</span></div>
+            <div class="field">
+              <label>Main Listen (SSH / HTTP)</label>
+              <input type="text" id="managedCfgListen" placeholder="0.0.0.0:80"/>
+            </div>
+            <div class="field" style="margin-top:8px;">
+              <label>Extra Listen Addresses <span class="hint">(one per line, e.g. 0.0.0.0:8080)</span></label>
+              <textarea id="managedCfgExtraListen" rows="4" style="width:100%;box-sizing:border-box;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:inherit;padding:10px;resize:vertical;"></textarea>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px;">
+            <div class="card-hdr"><div class="card-title">SSH & General</div></div>
+            <div class="form-grid">
+              <div class="field"><label>Default Upload Limit (Mbps)</label><input type="number" id="managedCfgLimitUp" min="0" placeholder="0"/></div>
+              <div class="field"><label>Default Download Limit (Mbps)</label><input type="number" id="managedCfgLimitDown" min="0" placeholder="0"/></div>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="managedCfgQuiet"/> Quiet Logs</label>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;"><input type="checkbox" id="managedCfgUserCount"/> User Count Display</label>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px;">
+            <div class="card-hdr"><div class="card-title">SSH Banner</div><span class="chip green">live</span></div>
+            <div class="field">
+              <label>Banner Text <span class="hint">(shown to connecting SSH clients)</span></label>
+              <textarea id="managedCfgBanner" rows="5" style="width:100%;box-sizing:border-box;background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:inherit;padding:10px;resize:vertical;"></textarea>
+            </div>
+            <div class="hint" style="margin-top:6px;">Banner file: /opt/sshpanel/banner.txt</div>
+          </div>
+        </div>
+
+        <div>
+          <div class="card">
+            <div class="card-hdr">
+              <div class="card-title">DNSTT Tunnel</div>
+              <span class="chip green">live</span>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;">
+                <input type="checkbox" id="managedCfgDnsttEnabled" onchange="toggleManagedDnsttFields(this.checked)"/> Enabled
+              </label>
+            </div>
+            <div id="managedDnsttFields" class="form-grid" style="opacity:.4;pointer-events:none;">
+              <div class="field"><label>Domain</label><input type="text" id="managedCfgDnsttDomain" placeholder="t.example.com"/></div>
+              <div class="field"><label>UDP Listen</label><input type="text" id="managedCfgDnsttUDP" placeholder="[::]:5300"/></div>
+              <div class="field" style="grid-column:1/-1">
+                <label>Private Key <span class="hint">auto-saved to /opt/sshpanel/dnstt.key</span></label>
+                <div class="field-row">
+                  <input type="text" id="managedCfgDnsttKey" readonly placeholder="Generate a key first…"/>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="generateManagedDnsttKey()">Generate</button>
+                  <button class="btn btn-ghost btn-sm" type="button" onclick="loadManagedDnsttPubkey()">Public Key</button>
+                </div>
+                <div id="managedDnsttPubkeyWrap" class="hidden" style="margin-top:6px;padding:8px;border-radius:8px;background:rgba(15,23,42,.9);border:1px solid rgba(55,65,81,.9);">
+                  <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;">Public Key — share with dnstt clients</div>
+                  <div class="field-row">
+                    <input type="text" id="managedDnsttPubkeyVal" readonly style="font-family:monospace;font-size:.65rem;"/>
+                    <button class="btn btn-ghost btn-sm" type="button" id="managedDnsttCopyBtn" onclick="navigator.clipboard.writeText(document.getElementById('managedDnsttPubkeyVal').value);document.getElementById('managedDnsttCopyBtn').textContent='Copied!';setTimeout(()=>document.getElementById('managedDnsttCopyBtn').textContent='Copy',1500)">Copy</button>
+                  </div>
+                </div>
+                <div id="managedDnsttKeyStatus" class="hint" style="margin-top:4px;"></div>
+              </div>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;grid-column:1/-1"><input type="checkbox" id="managedCfgDnsttNoStats"/> Disable Stats Log</label>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;grid-column:1/-1"><input type="checkbox" id="managedCfgDnsttNoConsole"/> Disable Console Log</label>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <div class="card-hdr">
+              <div class="card-title">UDP Gateway</div>
+              <span class="chip green">live</span>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;">
+                <input type="checkbox" id="managedCfgUdpgwEnabled" onchange="toggleManagedUdpgwFields(this.checked)"/> Enabled
+              </label>
+            </div>
+            <div id="managedUdpgwFields" class="form-grid" style="opacity:.4;pointer-events:none;">
+              <div class="field"><label>Listen</label><input type="text" id="managedCfgUdpgwListen" placeholder="0.0.0.0:7400"/></div>
+              <div class="field"><label>Max UDP Sessions Per Client <span class="hint">(not total server users)</span></label><input type="number" id="managedCfgUdpgwMaxConns" min="0" placeholder="10"/></div>
+              <div class="field"><label>Idle Timeout</label><input type="text" id="managedCfgUdpgwIdle" placeholder="2m"/></div>
+              <div class="field"><label>Map TTL</label><input type="text" id="managedCfgUdpgwMapTTL" placeholder="90s"/></div>
+              <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;grid-column:1/-1"><input type="checkbox" id="managedCfgUdpgwDebug"/> Debug Logging</label>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <div class="card-hdr">
+              <div class="card-title">TLS Forwarders <span class="chip" id="managedTlsCountChip">0</span></div>
+              <span class="chip green">live</span>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="toggleManagedAddTLSForm()">+ Add</button>
+            </div>
+            <div id="managedTlsForwardersList" style="margin-bottom:4px;"></div>
+            <div id="managedAddTLSPanel" class="hidden" style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:6px;">
+              <div class="form-grid">
+                <div class="field" style="grid-column:1/-1"><label>Listen Address</label><input type="text" id="managedTlsListenAddr" placeholder="0.0.0.0:443"/></div>
+                <div class="field" style="grid-column:1/-1">
+                  <label>Certificate</label>
+                  <select id="managedTlsCertType" onchange="onManagedTLSTypeChange(this.value)">
+                    <option value="selfsigned">Generate Self-Signed</option>
+                    <option value="letsencrypt">Let's Encrypt (certbot)</option>
+                    <option value="paste">Paste PEM text</option>
+                    <option value="custom">Custom file paths</option>
+                  </select>
+                </div>
+                <div id="managedTlsSSFields" style="grid-column:1/-1"><div class="field"><label>Domain Name <span class="hint">(CN for certificate)</span></label><input type="text" id="managedTlsSSLDomain" placeholder="example.com"/></div></div>
+                <div id="managedTlsLEFields" class="hidden" style="grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div class="field"><label>Domain</label><input type="text" id="managedTlsLEDomain" placeholder="example.com"/></div>
+                  <div class="field"><label>Email</label><input type="text" id="managedTlsLEEmail" placeholder="admin@example.com"/></div>
+                </div>
+                <div id="managedTlsCustomFields" class="hidden" style="grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div class="field"><label>Cert File</label><input type="text" id="managedTlsCustomCert" placeholder="/path/to/fullchain.pem"/></div>
+                  <div class="field"><label>Key File</label><input type="text" id="managedTlsCustomKey" placeholder="/path/to/privkey.pem"/></div>
+                </div>
+                <div id="managedTlsPasteFields" class="hidden" style="grid-column:1/-1;display:none;">
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                    <div class="field"><label>Certificate PEM</label><textarea id="managedTlsPasteCert" rows="5" placeholder="-----BEGIN CERTIFICATE-----&#10;…" style="font-family:monospace;font-size:.7rem;width:100%;box-sizing:border-box;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:inherit;padding:4px;"></textarea></div>
+                    <div class="field"><label>Private Key PEM</label><textarea id="managedTlsPasteKey" rows="5" placeholder="-----BEGIN EC PRIVATE KEY-----&#10;…" style="font-family:monospace;font-size:.7rem;width:100%;box-sizing:border-box;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:inherit;padding:4px;"></textarea></div>
+                  </div>
+                  <div class="field" style="margin-top:6px;"><label>Name <span class="hint">(storage folder, e.g. my-cert)</span></label><input type="text" id="managedTlsPasteName" placeholder="my-cert"/></div>
+                </div>
+              </div>
+              <div class="form-actions" style="margin-top:8px;">
+                <button class="btn btn-sm" type="button" onclick="addManagedTLSForwarder()">Add Forwarder</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="toggleManagedAddTLSForm()">Cancel</button>
+              </div>
+              <div id="managedTlsAddStatus" class="hint" style="margin-top:4px;"></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <div class="card-hdr"><div class="card-title">Xray Core</div><span class="chip green">live</span></div>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;margin-top:4px;"><input type="checkbox" id="managedCfgXrayEnabled"/> Enabled</label>
+            <div class="hint" style="margin-top:6px;color:var(--muted);">Binary: /opt/sshpanel/xray &nbsp;·&nbsp; Config: /opt/sshpanel/xray_config.json &nbsp;·&nbsp; Online counters use Xray Stats API on 127.0.0.1:10085</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="save-bar">
+        <div class="card-actions save-bar-actions">
+          <button class="btn" id="saveManagedConfigBottomBtn" type="button">Save Config</button>
+          <button class="btn btn-ghost" id="reloadManagedConfigBottomBtn" type="button">Reload</button>
+        </div>
+        <span class="hint">All service changes apply live on the selected node.</span>
+      </div>
+    </div>
+  </div><!-- /tab-servers -->
+
+  <!-- ═══════════ Servers Status Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-servers-status">
+    <div class="card servers-status-toolbar">
+      <div class="card-hdr">
+        <div class="card-title">Servers Status <span class="chip" id="serversStatusCountChip">0</span></div>
+        <div class="card-actions">
+          <button class="btn btn-ghost btn-sm" id="refreshServersStatusBtn" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="statusbar">
+        <span id="serversStatusPageStatus">Ready.</span>
+      </div>
+    </div>
+    <div class="servers-status-grid" id="serversStatusGrid"></div>
+  </div><!-- /tab-servers-status -->
+
+  <!-- ═══════════ Stats Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-stats">
+    <div class="grid2">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Server Load</div><span class="hint" id="statsUpdated">--</span></div>
+        <div class="metrics">
+          <div class="metric">
+            <div class="m-label">CPU</div>
+            <div class="m-val"><span id="cpuVal">--%</span></div>
+            <div class="bar"><div class="bar-inner" id="cpuBar" style="width:0%"></div></div>
+          </div>
+          <div class="metric">
+            <div class="m-label">RAM</div>
+            <div class="m-val"><span id="memVal">--%</span> <span class="hint" id="memDetail"></span></div>
+            <div class="bar"><div class="bar-inner" id="memBar" style="width:0%"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr">
+          <div class="card-title">Interfaces <span class="chip">rx/tx Mbps</span><span class="chip warn">30-day rolling</span></div>
+          <button class="btn btn-danger btn-sm" id="resetIfaceStatsBtn" type="button">Clean usage</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Interface</th><th>Rx Mbps</th><th>Tx Mbps</th><th>Rx Total</th><th>Tx Total</th></tr></thead>
+            <tbody id="ifaceBody"></tbody>
+          </table>
+        </div>
+        <div class="statusbar"><span id="ifaceSummary"></span><span class="hint">Totals can be cleaned here and auto-clean every 30 days. VnStat history is separate.</span></div>
+      </div>
+    </div>
+  </div><!-- /tab-stats -->
+
+  <!-- ═══════════ VnStat Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-vnstat">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">VnStat Usage <span class="chip">daily / monthly</span></div>
+        <div class="form-actions" style="margin-top:0">
+          <button class="btn btn-ghost btn-sm" id="reloadVnstatBtn" type="button">Refresh</button>
+          <button class="btn btn-danger btn-sm" id="resetVnstatBtn" type="button">Clean VnStat history</button>
+        </div>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="m-label">Today total</div><div class="m-val" id="vnTodayTotal">--</div></div>
+        <div class="metric"><div class="m-label">This month total</div><div class="m-val" id="vnMonthTotal">--</div></div>
+        <div class="metric"><div class="m-label">Interfaces tracked</div><div class="m-val" id="vnIfaceCount">--</div></div>
+      </div>
+      <div class="statusbar"><span id="vnstatStatus">VnStat history does not auto-clean. Use the button when you want to reset it.</span></div>
+    </div>
+
+    <div class="grid2" style="margin-top:12px;">
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Daily usage <span class="chip">last 31 days</span></div></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Day</th><th>Interface</th><th>Rx</th><th>Tx</th><th>Total</th></tr></thead>
+            <tbody id="vnstatDailyBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-hdr"><div class="card-title">Monthly usage <span class="chip">last 12 months</span></div></div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Month</th><th>Interface</th><th>Rx</th><th>Tx</th><th>Total</th></tr></thead>
+            <tbody id="vnstatMonthlyBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div><!-- /tab-vnstat -->
+
+  <!-- ═══════════ Logs Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-logs">
+    <div class="card">
+      <div class="card-hdr">
+        <div class="card-title">System Logs</div>
+        <div class="form-actions" style="margin-top:0">
+          <select id="logSource" class="btn-ghost" style="border-radius:999px;padding:4px 8px;background:rgba(15,23,42,.9);color:var(--text);border:1px solid rgba(55,65,81,.9);font-size:.7rem;">
+            <option value="panel">Panel / system</option>
+            <option value="dnstt">DNSTT</option>
+            <option value="xray">Xray</option>
+          </select>
+          <button class="btn btn-sm" type="button" onclick="loadSystemLogs()">Refresh</button>
+          <button class="btn btn-danger btn-sm" type="button" id="clearPanelLogBtn">Clean panel log</button>
+        </div>
+      </div>
+      <pre class="log-box" id="systemLogBox" style="max-height:430px;min-height:260px;">Select a log source and click Refresh.</pre>
+      <div class="statusbar"><span id="systemLogStatus">Ready.</span></div>
+    </div>
+  </div><!-- /tab-logs -->
+
+  <!-- ═══════════ Server Config Tab (superadmin only) ═══════════ -->
+  <div class="tab-pane" id="tab-server">
+
+    <div class="grid2">
+      <!-- ── Left column ── -->
+      <div>
+
+        <!-- Network -->
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">Network</div>
+            <span class="chip green">live</span>
+          </div>
+          <div class="form-grid">
+            <div class="field" style="grid-column:1/-1">
+              <label>Main Listen (SSH / HTTP)</label>
+              <input type="text" id="cfgListen" placeholder="0.0.0.0:80"/>
+            </div>
+          </div>
+          <div class="field" style="margin-top:6px">
+            <label>Extra Listen Addresses <span class="hint">(one per line, e.g. 0.0.0.0:8080)</span></label>
+            <textarea id="cfgExtraListen" rows="3" style="resize:vertical"></textarea>
+          </div>
+        </div>
+
+        <!-- SSH & general -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-hdr">
+            <div class="card-title">SSH &amp; General</div>
+          </div>
+          <div class="form-grid">
+            <div class="field">
+              <label>Default Upload Limit (Mbps)</label>
+              <input type="number" id="cfgLimitUp" min="0" placeholder="0 = unlimited"/>
+            </div>
+            <div class="field">
+              <label>Default Download Limit (Mbps)</label>
+              <input type="number" id="cfgLimitDown" min="0" placeholder="0 = unlimited"/>
+            </div>
+          </div>
+          <div style="display:flex;gap:16px;margin-top:8px;flex-wrap:wrap;">
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="cfgQuiet"/> Quiet Logs
+            </label>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;">
+              <input type="checkbox" id="cfgUserCount"/> User Count Display
+            </label>
+          </div>
+        </div>
+
+        <!-- Banner -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-hdr">
+            <div class="card-title">SSH Banner</div>
+            <span class="chip green">live</span>
+          </div>
+          <div class="field">
+            <label>Banner Text <span class="hint">(shown to connecting SSH clients)</span></label>
+            <textarea id="cfgBanner" rows="4" style="resize:vertical"></textarea>
+          </div>
+          <div class="hint" style="margin-top:6px;">Banner file: /opt/sshpanel/banner.txt</div>
+        </div>
+
+      </div><!-- /left -->
+
+      <!-- ── Right column ── -->
+      <div>
+
+        <!-- DNSTT -->
+        <div class="card">
+          <div class="card-hdr">
+            <div class="card-title">DNSTT Tunnel</div>
+            <span class="chip green">live</span>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;">
+              <input type="checkbox" id="cfgDnsttEnabled" onchange="toggleDnsttFields(this.checked)"/> Enabled
+            </label>
+          </div>
+          <div id="dnsttFields" class="form-grid" style="opacity:.4;pointer-events:none;">
+            <div class="field">
+              <label>Domain</label>
+              <input type="text" id="cfgDnsttDomain" placeholder="t.example.com"/>
+            </div>
+            <div class="field">
+              <label>UDP Listen</label>
+              <input type="text" id="cfgDnsttUDP" placeholder="[::]:5300"/>
+            </div>
+            <div class="field" style="grid-column:1/-1">
+              <label>Private Key <span class="hint">auto-saved to /opt/sshpanel/dnstt.key</span></label>
+              <div class="field-row">
+                <input type="text" id="cfgDnsttKey" readonly placeholder="Generate a key first…"/>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="generateDnsttKey()">Generate</button>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="loadDnsttPubkey()">Public Key</button>
+              </div>
+              <div id="dnsttPubkeyWrap" class="hidden" style="margin-top:6px;padding:8px;border-radius:8px;background:rgba(15,23,42,.9);border:1px solid rgba(55,65,81,.9);">
+                <div style="font-size:.68rem;color:var(--muted);margin-bottom:4px;">Public Key — share with dnstt clients</div>
+                <div class="field-row">
+                  <input type="text" id="dnsttPubkeyVal" readonly style="font-family:monospace;font-size:.65rem;"/>
+                  <button class="btn btn-ghost btn-sm" type="button" id="dnsttCopyBtn" onclick="navigator.clipboard.writeText(document.getElementById('dnsttPubkeyVal').value);document.getElementById('dnsttCopyBtn').textContent='Copied!';setTimeout(()=>document.getElementById('dnsttCopyBtn').textContent='Copy',1500)">Copy</button>
+                </div>
+              </div>
+              <div id="dnsttKeyStatus" class="hint" style="margin-top:4px;"></div>
+            </div>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;grid-column:1/-1">
+              <input type="checkbox" id="cfgDnsttNoStats"/> Disable Stats Log
+            </label>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;grid-column:1/-1">
+              <input type="checkbox" id="cfgDnsttNoConsole"/> Disable Console Log
+            </label>
+          </div>
+        </div>
+
+        <!-- UDPGW -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-hdr">
+            <div class="card-title">UDP Gateway</div>
+            <span class="chip green">live</span>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;margin-left:auto;">
+              <input type="checkbox" id="cfgUdpgwEnabled" onchange="toggleUdpgwFields(this.checked)"/> Enabled
+            </label>
+          </div>
+          <div id="udpgwFields" class="form-grid" style="opacity:.4;pointer-events:none;">
+            <div class="field">
+              <label>Listen</label>
+              <input type="text" id="cfgUdpgwListen" placeholder="0.0.0.0:7400"/>
+            </div>
+            <div class="field">
+              <label>Max UDP Sessions Per Client <span class="hint">(not total server users)</span></label>
+              <input type="number" id="cfgUdpgwMaxConns" min="0" placeholder="10" title="Per connected client. This is not the total number of UDPGW users allowed on the server."/>
+            </div>
+            <div class="field">
+              <label>Idle Timeout</label>
+              <input type="text" id="cfgUdpgwIdle" placeholder="2m"/>
+            </div>
+            <div class="field">
+              <label>Map TTL</label>
+              <input type="text" id="cfgUdpgwMapTTL" placeholder="90s"/>
+            </div>
+            <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;grid-column:1/-1">
+              <input type="checkbox" id="cfgUdpgwDebug"/> Debug Logging
+            </label>
+          </div>
+        </div>
+
+        <!-- TLS Forwarders -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-hdr">
+            <div class="card-title">TLS Forwarders <span class="chip" id="tlsCountChip">0</span></div>
+            <span class="chip green">live</span>
+            <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAddTLSForm()">+ Add</button>
+          </div>
+          <div id="tlsForwardersList" style="margin-bottom:4px;"></div>
+          <div id="addTLSPanel" class="hidden" style="border:1px solid var(--border);border-radius:8px;padding:10px;margin-top:6px;">
+            <div class="form-grid">
+              <div class="field" style="grid-column:1/-1">
+                <label>Listen Address</label>
+                <input type="text" id="tlsListenAddr" placeholder="0.0.0.0:443"/>
+              </div>
+              <div class="field" style="grid-column:1/-1">
+                <label>Certificate</label>
+                <select id="tlsCertType" onchange="onTLSTypeChange(this.value)">
+                  <option value="selfsigned">Generate Self-Signed</option>
+                  <option value="letsencrypt">Let's Encrypt (certbot)</option>
+                  <option value="paste">Paste PEM text</option>
+                  <option value="custom">Custom file paths</option>
+                </select>
+              </div>
+              <div id="tlsSSFields" style="grid-column:1/-1">
+                <div class="field"><label>Domain Name <span class="hint">(CN for certificate)</span></label><input type="text" id="tlsSSLDomain" placeholder="example.com"/></div>
+              </div>
+              <div id="tlsLEFields" class="hidden" style="grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="field"><label>Domain</label><input type="text" id="tlsLEDomain" placeholder="example.com"/></div>
+                <div class="field"><label>Email</label><input type="text" id="tlsLEEmail" placeholder="admin@example.com"/></div>
+              </div>
+              <div id="tlsCustomFields" class="hidden" style="grid-column:1/-1;display:none;grid-template-columns:1fr 1fr;gap:8px;">
+                <div class="field"><label>Cert File</label><input type="text" id="tlsCustomCert" placeholder="/path/to/fullchain.pem"/></div>
+                <div class="field"><label>Key File</label><input type="text" id="tlsCustomKey" placeholder="/path/to/privkey.pem"/></div>
+              </div>
+              <div id="tlsPasteFields" class="hidden" style="grid-column:1/-1;display:none;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+                  <div class="field"><label>Certificate PEM</label><textarea id="tlsPasteCert" rows="5" placeholder="-----BEGIN CERTIFICATE-----&#10;…" style="font-family:monospace;font-size:.7rem;width:100%;box-sizing:border-box;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:inherit;padding:4px;"></textarea></div>
+                  <div class="field"><label>Private Key PEM</label><textarea id="tlsPasteKey" rows="5" placeholder="-----BEGIN EC PRIVATE KEY-----&#10;…" style="font-family:monospace;font-size:.7rem;width:100%;box-sizing:border-box;resize:vertical;background:var(--input-bg);border:1px solid var(--border);border-radius:4px;color:inherit;padding:4px;"></textarea></div>
+                </div>
+                <div class="field" style="margin-top:6px;"><label>Name <span class="hint">(storage folder, e.g. my-cert)</span></label><input type="text" id="tlsPasteName" placeholder="my-cert"/></div>
+              </div>
+            </div>
+            <div class="form-actions" style="margin-top:8px;">
+              <button class="btn btn-sm" type="button" onclick="addTLSForwarder()">Add Forwarder</button>
+              <button class="btn btn-ghost btn-sm" type="button" onclick="toggleAddTLSForm()">Cancel</button>
+            </div>
+            <div id="tlsAddStatus" class="hint" style="margin-top:4px;"></div>
+          </div>
+        </div>
+
+        <!-- Xray -->
+        <div class="card" style="margin-top:12px">
+          <div class="card-hdr">
+            <div class="card-title">Xray Core</div>
+            <span class="chip green">live</span>
+          </div>
+          <label style="font-size:.73rem;display:flex;align-items:center;gap:5px;cursor:pointer;margin-top:4px;">
+            <input type="checkbox" id="cfgXrayEnabled"/> Enabled
+          </label>
+          <div class="hint" style="margin-top:6px;color:var(--muted);">Binary: /opt/sshpanel/xray &nbsp;·&nbsp; Config: /opt/sshpanel/xray_config.json &nbsp;·&nbsp; Online counters use Xray Stats API on 127.0.0.1:10085</div>
+        </div>
+
+      </div><!-- /right -->
+    </div><!-- /grid2 -->
+
+    <!-- Save bar -->
+    <div class="save-bar">
+      <div class="card-actions save-bar-actions">
+        <button class="btn" onclick="saveServerConfig()">Save Config</button>
+        <button class="btn btn-ghost" onclick="loadServerConfig()">Reload</button>
+      </div>
+      <span id="srvCfgStatus" class="hint">All service changes apply live.</span>
+    </div>
+
+  </div><!-- /tab-server -->
+
+      </main>
+    </section>
+  </div><!-- /panel-layout -->
+</div><!-- /mainApp -->
+</div><!-- /shell -->
+</div><!-- /app -->
+
+<script defer src="assets/app.js?v=20260511visualsafesave1"></script>
+</body>
+</html>
