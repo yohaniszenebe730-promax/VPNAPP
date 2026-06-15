@@ -1,8 +1,8 @@
-# DragonCoreSSH V40
+# FES ETHIOPIA 
 
 ## PT-BR
 
-DragonCoreSSH V40 é um painel/servidor em Go para SSH com HTTP Injection, painel web, PostgreSQL, integração com Xray-core/V2Ray e API pública para consultar status de usuários SSH e clientes Xray.
+FES ETHIOPIA.
 
 ### Recursos principais
 
